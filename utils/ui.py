@@ -103,3 +103,17 @@ def styled_line(df, x, y, color=None, title=None, markers=True, fill=False):
     if title:
         fig.update_layout(title=dict(text=title, font=dict(size=18, color="#242436")))
     return plot_layout(fig)
+
+
+def medal_card(rank, name, score=None):
+    medals = {1: "🥇", 2: "🥈", 3: "🥉"}
+    medal = medals.get(rank, "🏅")
+    score_text = "" if score is None else f"<div class='metric-delta'>Skor: {score}</div>"
+
+    return f"""
+    <div class="metric-card">
+        <div style="font-size:32px;">{medal}</div>
+        <h3>{name}</h3>
+        {score_text}
+    </div>
+    """
