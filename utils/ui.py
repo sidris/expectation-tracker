@@ -108,12 +108,11 @@ def styled_line(df, x, y, color=None, title=None, markers=True, fill=False):
 def medal_card(rank, name, score=None):
     medals = {1: "🥇", 2: "🥈", 3: "🥉"}
     medal = medals.get(rank, "🏅")
-    score_text = "" if score is None else f"<div class='metric-delta'>Skor: {score}</div>"
-
+    score_text = "" if score is None else f"<div class='score'>Skor: {score}</div>"
     return f"""
-    <div class="metric-card">
-        <div style="font-size:32px;">{medal}</div>
-        <h3>{name}</h3>
+    <div class="medal-card">
+        <div class="medal">{medal}</div>
+        <div class="name">{name}</div>
         {score_text}
     </div>
     """

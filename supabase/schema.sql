@@ -55,6 +55,8 @@ create table if not exists forecasts (
   confidence text,
   is_latest_for_participant boolean default true,
   raw_text text,
+  source_text text, -- hızlı kaynak açıklaması: TV, haber başlığı, rapor adı vb.
+  source_url text,
   notes text,
   created_at timestamptz default now()
 );
@@ -79,12 +81,16 @@ create table if not exists poll_summaries (
   created_at timestamptz default now()
 );
 
+alter table forecasts add column if not exists poll_id uuid references poll_summaries(id) on delete set null; -- Reuters/Matriks anketindeki tekil kurum cevaplarını parent ankete bağlar
+
 create table if not exists actuals (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references forecast_events(id) on delete cascade,
   actual_value numeric not null,
   released_at date,
   source_url text,
+  provider text default 'manual', -- manual, EVDS, BIS vb.
+  external_series_code text,
   notes text,
   created_at timestamptz default now(),
   unique(event_id)
@@ -95,11 +101,13 @@ select
   f.*,
   e.target_period,
   extract(year from e.target_period)::int as target_year,
+  extract(month from e.target_period)::int as target_month,
   e.target_type,
   to_char(e.target_period, 'YYYY-MM') || ' / ' || e.target_type::text as event_label,
   p.name as participant_name,
   p.type as participant_type,
   s.name as source_name,
+  ps.poll_name,
   a.actual_value,
   abs(f.forecast_value - a.actual_value) as abs_error,
   (e.target_period - f.forecast_date) as horizon_days
@@ -107,6 +115,7 @@ from forecasts f
 join forecast_events e on e.id = f.event_id
 left join participants p on p.id = f.participant_id
 left join sources s on s.id = f.source_id
+left join poll_summaries ps on ps.id = f.poll_id
 left join actuals a on a.event_id = f.event_id;
 
 create or replace view v_latest_forecasts as
@@ -134,6 +143,10 @@ having count(*) >= 2;
 create index if not exists idx_forecast_events_period_type on forecast_events(target_period, target_type);
 create index if not exists idx_forecasts_event_participant_date on forecasts(event_id, participant_id, forecast_date desc);
 create index if not exists idx_actuals_event on actuals(event_id);
+alter table forecasts add column if not exists source_text text;
+alter table forecasts add column if not exists source_url text;
+alter table actuals add column if not exists provider text default 'manual';
+alter table actuals add column if not exists external_series_code text;
 
 alter table participants enable row level security;
 alter table sources enable row level security;
@@ -161,6 +174,7 @@ select
   ps.*,
   e.target_period,
   extract(year from e.target_period)::int as target_year,
+  extract(month from e.target_period)::int as target_month,
   e.target_type,
   to_char(e.target_period, 'YYYY-MM') || ' / ' || e.target_type::text as event_label,
   s.name as source_name,
