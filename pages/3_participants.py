@@ -1,11 +1,11 @@
 import streamlit as st
-from utils.db import insert, fetch
+from utils.db import insert, fetch, get_client
 
 st.title("👥 Katılımcılar")
 
-# Mevcut katılımcıları çek
 participants = fetch("participants", order="name")
 
+# --- EKLEME FORMU ---
 with st.form("participant_form"):
 
     name = st.text_input("Ad / kurum adı")
@@ -26,7 +26,6 @@ with st.form("participant_form"):
         if not name.strip():
             st.error("İsim boş olamaz")
         else:
-            # 🔥 DUPLICATE KONTROL
             existing = [
                 p for p in participants
                 if p["name"].strip().lower() == name.strip().lower()
@@ -45,13 +44,38 @@ with st.form("participant_form"):
                     })
 
                     st.success("✅ Katılımcı eklendi")
+                    st.rerun()
 
                 except Exception as e:
                     st.error("❌ Kayıt sırasında hata oluştu")
                     st.code(str(e))
 
-# --- Liste gösterimi ---
-st.markdown("### Kayıtlı katılımcılar")
+
+# --- SİLME ALANI ---
+st.markdown("### 🗑️ Katılımcı Sil")
+
+if participants:
+
+    selected = st.selectbox(
+        "Silinecek katılımcıyı seç",
+        participants,
+        format_func=lambda x: f"{x['name']} ({x['type']})"
+    )
+
+    if st.button("❌ Sil"):
+
+        try:
+            get_client().table("participants").delete().eq("id", selected["id"]).execute()
+            st.success("✅ Katılımcı silindi")
+            st.rerun()
+
+        except Exception as e:
+            st.error("❌ Silme sırasında hata oluştu")
+            st.code(str(e))
+
+
+# --- LİSTE ---
+st.markdown("### 📋 Kayıtlı katılımcılar")
 
 if participants:
     for p in participants:
