@@ -224,18 +224,53 @@ def show_grid(
 def diff_rows(original: pd.DataFrame, edited: pd.DataFrame, id_col: str = "id") -> pd.DataFrame:
     """İki DataFrame arasındaki değişen satırları döner (id'lerine göre eşleşen).
 
-    Yalnızca farklı olan kolonları içeren satırları üretir; toplu update için kullanılır.
+    Yalnızca farklı olan satırları içeren DataFrame üretir; toplu update için kullanılır.
+    AgGrid edit sonrası kolon sırasını/tiplerini değiştirebilir, bu yüzden:
+      - Ortak kolonları al
+      - Edited dataframe'i original'ın kolon sırasına göre yeniden indeksle
+      - Hücre bazında string-cast karşılaştırma yap (NaN ve tip farklarını önler)
     """
     if id_col not in original.columns or id_col not in edited.columns:
         return pd.DataFrame()
 
-    original_ix = original.set_index(id_col)
-    edited_ix = edited.set_index(id_col)
-
-    common = original_ix.index.intersection(edited_ix.index)
-    if len(common) == 0:
+    # Edit edilemeyen kolonları (datetime, dict gibi) güvenli karşılaştırmak için
+    # her iki tarafı da string'e çeviriyoruz. Bu sadece diff tespiti için;
+    # gerçek update payload'ı edited'tan alınıyor.
+    common_cols = [c for c in original.columns if c in edited.columns and c != id_col]
+    if not common_cols:
         return pd.DataFrame()
 
-    diff_mask = (original_ix.loc[common] != edited_ix.loc[common]).any(axis=1)
-    changed_ids = common[diff_mask]
-    return edited_ix.loc[changed_ids].reset_index()
+    orig = original[[id_col] + common_cols].copy()
+    edit = edited[[id_col] + common_cols].copy()
+
+    # ID kolonu null olan satırları çıkar (yeni eklenmiş, henüz kaydedilmemiş)
+    orig = orig.dropna(subset=[id_col])
+    edit = edit.dropna(subset=[id_col])
+
+    if orig.empty or edit.empty:
+        return pd.DataFrame()
+
+    orig_ix = orig.set_index(id_col)
+    edit_ix = edit.set_index(id_col)
+
+    # Sadece her iki tarafta da olan ID'leri karşılaştır
+    common_ids = orig_ix.index.intersection(edit_ix.index)
+    if len(common_ids) == 0:
+        return pd.DataFrame()
+
+    orig_ix = orig_ix.loc[common_ids]
+    edit_ix = edit_ix.loc[common_ids]
+
+    # String'e cast et + NaN'ları boş string'e çevir (NaN != NaN sorununu önle)
+    orig_str = orig_ix.fillna("").astype(str)
+    edit_str = edit_ix.fillna("").astype(str)
+
+    # Hücre bazında fark
+    diff_mask = (orig_str != edit_str).any(axis=1)
+    changed_ids = common_ids[diff_mask]
+
+    if len(changed_ids) == 0:
+        return pd.DataFrame()
+
+    # Orijinal tipleri korumak için edited'tan döndür
+    return edit_ix.loc[changed_ids].reset_index()
