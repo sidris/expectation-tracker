@@ -1,20 +1,13 @@
+"""Excel export ve ortak filtre bileşenleri."""
+from __future__ import annotations
+
 from io import BytesIO
+
 import pandas as pd
 import streamlit as st
 
-TARGET_TYPE_LABELS = {
-    "monthly_cpi": "Aylık TÜFE",
-    "annual_cpi": "Yıllık TÜFE",
-    "year_end_cpi": "Sene sonu enflasyon/TÜFE",
-    "policy_rate": "PPK politika faizi",
-    "year_end_policy_rate": "Sene sonu PPK/politika faizi",
-}
-
-PARTICIPANT_TYPE_LABELS = {
-    "person": "Kişi",
-    "institution": "Kurum",
-    "media_poll": "Medya / anket kaynağı",
-}
+# Sözlükler tek kaynaktan import edilir.
+from utils.domain import TARGET_TYPE_LABELS, PARTICIPANT_TYPE_LABELS
 
 
 def add_display_labels(df: pd.DataFrame) -> pd.DataFrame:

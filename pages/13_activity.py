@@ -1,18 +1,35 @@
-import streamlit as st
+"""Aktivite akışı — sistemde yapılan tüm önemli işlemlerin logu."""
 import pandas as pd
-from utils.db import fetch, insert
+import streamlit as st
+
+from utils.db import fetch
 from utils.ui import inject_theme
 
 inject_theme()
-st.title("🕘 Aktivite Akışı")
-with st.form("activity"):
-    activity_type = st.selectbox("Tip", ["forecast", "actual", "poll", "source", "note", "system"])
-    title = st.text_input("Başlık")
-    details = st.text_area("Detay")
-    ok = st.form_submit_button("Akışa ekle")
-if ok and title:
-    insert("activity_log", {"activity_type": activity_type, "title": title, "details": details})
-    st.success("Aktivite eklendi.")
 
-df = pd.DataFrame(fetch("activity_log", order="created_at", limit=500))
-st.dataframe(df, use_container_width=True, hide_index=True)
+st.markdown(
+    """
+    <div class="hero">
+      <h1>🕘 Aktivite Akışı</h1>
+      <p>Sistemde yapılan kayıt, düzenleme ve sync işlemleri. Otomatik loglanır;
+         manuel giriş yapılmaz.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+df = pd.DataFrame(fetch("activity_log", order="created_at", desc=True, limit=500))
+
+if df.empty:
+    st.info("Henüz aktivite kaydı yok.")
+else:
+    # Tip bazında basit filtre
+    if "activity_type" in df.columns:
+        types = sorted(df["activity_type"].dropna().unique())
+        selected = st.multiselect(
+            "Aktivite tipine göre filtrele", types, default=types,
+        )
+        if selected:
+            df = df[df["activity_type"].isin(selected)]
+
+    st.dataframe(df, use_container_width=True, hide_index=True)

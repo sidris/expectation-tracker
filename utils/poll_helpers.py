@@ -1,8 +1,9 @@
+"""Anket (poll) tahminleri için yardımcı fonksiyonlar."""
 from __future__ import annotations
 
 from typing import Any, Optional
 
-from utils.db import get_client
+from utils.db import get_client, delete as db_delete, update as db_update, insert as db_insert
 
 
 def to_float_or_none(value: Any) -> Optional[float]:
@@ -21,7 +22,7 @@ def to_float_or_none(value: Any) -> Optional[float]:
 
 
 def update_poll_summary(poll_id: str, payload: dict) -> list[dict]:
-    return get_client().table("poll_summaries").update(payload).eq("id", poll_id).execute().data
+    return db_update("poll_summaries", payload, eq={"id": poll_id})
 
 
 def get_poll_forecasts(poll_id: str) -> list[dict]:
@@ -48,9 +49,7 @@ def upsert_poll_forecast(
 ) -> str:
     """Poll içindeki kurum tahminini günceller; yoksa oluşturur.
 
-    Unique constraint'e ihtiyaç duymaz. Böylece eski verileri bozmaz.
-    Eğer aynı poll+participant için geçmişte duplicate oluşmuşsa en yeni kaydı günceller,
-    diğerlerini elle silmek için ekrandaki silme kutuları kullanılabilir.
+    Aynı poll+participant için birden fazla kayıt varsa en yenisini günceller.
     """
     client = get_client()
     existing = (
@@ -75,11 +74,11 @@ def upsert_poll_forecast(
     }
     if existing:
         forecast_id = existing[0]["id"]
-        client.table("forecasts").update(payload).eq("id", forecast_id).execute()
+        db_update("forecasts", payload, eq={"id": forecast_id})
         return forecast_id
-    created = client.table("forecasts").insert(payload).execute().data
+    created = db_insert("forecasts", payload)
     return created[0]["id"] if created else ""
 
 
 def delete_forecast(forecast_id: str) -> None:
-    get_client().table("forecasts").delete().eq("id", forecast_id).execute()
+    db_delete("forecasts", eq={"id": forecast_id})

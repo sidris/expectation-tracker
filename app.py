@@ -1,30 +1,71 @@
+"""Expectation Tracker — ana giriş.
+
+Sayfalar pages/ klasöründen otomatik yüklenir.
+Streamlit'in dosya numarasına göre sıralaması sayfa sırasını belirler.
+"""
 import streamlit as st
+
 from utils.ui import inject_theme
 
-st.set_page_config(page_title="Beklenti Takip Sistemi", page_icon="📊", layout="wide")
+st.set_page_config(
+    page_title="Expectation Tracker",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 inject_theme()
 
-st.markdown("""
-<div class="hero">
-  <h1>📊 Beklenti Takip Sistemi</h1>
-  <p>Enflasyon ve TCMB PPK faiz beklentileri için kayıt, filtreleme, Excel çıktı, dashboard ve tahminci performansı.</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="hero">
+      <h1>📈 Expectation Tracker</h1>
+      <p>Türkiye enflasyon ve PPK politika faizi beklentilerini izleme sistemi.
+         Sol menüden bir sayfa seçerek başla.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown("### Hızlı erişim")
 
 c1, c2, c3 = st.columns(3)
-c1.metric("Ana odak", "TÜFE & PPK")
-c2.metric("Katılımcı türleri", "Kişi / Kurum / Medya")
-c3.metric("Çıktı", "Excel + Dashboard")
 
-st.markdown("""
-<div class="soft-card">
-<h3>Önerilen ek modüller</h3>
-<ul>
-<li><b>Revizyon takibi:</b> Aynı kişi/kurumun aynı hedef dönem için ilk ve son tahminini karşılaştır.</li>
-<li><b>Konsensüs sapması:</b> Her tahmini anket medyanına göre ölç.</li>
-<li><b>Kaynak güven skoru:</b> TV, rapor, haber ve manuel duyumları kalite seviyesine göre etiketle.</li>
-<li><b>Alarm sistemi:</b> Yeni PPK/TÜFE beklentisi girildiğinde Telegram’dan özet gönder.</li>
-<li><b>Tahminci profili:</b> Kişi/kurum bazında geçmiş başarı, yanılma yönü ve en iyi olduğu gösterge.</li>
-</ul>
-</div>
-""", unsafe_allow_html=True)
+with c1:
+    st.markdown(
+        """
+        **Veri girişi**
+        - 📊 Anket Yönetimi — Reuters/Matriks anketleri
+        - ✍️ Tek Tahmin Girişi — anket dışı tahminler
+        - 👥 Katılımcılar
+        - 📰 Kaynaklar
+        - 🤖 Metinden Tahmin Çıkar
+        """
+    )
+
+with c2:
+    st.markdown(
+        """
+        **Analiz**
+        - 📈 Dashboard
+        - 🔁 Revizyon Takibi
+        - 👤 Tahminci Profili
+        - 📌 Konsensus Analizi
+        - ⭐ Kaynak Güven Skoru
+        """
+    )
+
+with c3:
+    st.markdown(
+        """
+        **Operasyon**
+        - ✅ Gerçekleşmeler — EVDS/BIS sync
+        - 🗃️ Veri Havuzu — Excel export
+        - 🕘 Aktivite Akışı
+        """
+    )
+
+st.caption(
+    "Veriler Supabase'de saklanır. EVDS ve BIS gerçekleşme verileri günlük "
+    "GitHub Actions ile otomatik güncellenir."
+)
