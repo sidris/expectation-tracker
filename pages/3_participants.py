@@ -1,19 +1,60 @@
 import streamlit as st
-import pandas as pd
-from utils.db import fetch, insert
+from utils.db import insert, fetch
 
 st.title("👥 Katılımcılar")
 
-with st.form("participant"):
+# Mevcut katılımcıları çek
+participants = fetch("participants", order="name")
+
+with st.form("participant_form"):
+
     name = st.text_input("Ad / kurum adı")
-    ptype = st.selectbox("Tip", ["person","institution","media_poll"])
-    institution_name = st.text_input("Bağlı kurum / yayın")
-    title = st.text_input("Unvan")
+
+    ptype = st.selectbox(
+        "Tip",
+        ["person", "institution"]
+    )
+
+    institution_name = st.text_input("Kurum (kişiler için)")
+    title = st.text_input("Ünvan")
     notes = st.text_area("Not")
-    ok = st.form_submit_button("Kaydet")
 
-if ok and name:
-    insert("participants", {"name": name, "type": ptype, "institution_name": institution_name, "title": title, "notes": notes})
-    st.success("Katılımcı kaydedildi.")
+    submitted = st.form_submit_button("Kaydet")
 
-st.dataframe(pd.DataFrame(fetch("participants", order="name")), use_container_width=True)
+    if submitted:
+
+        if not name.strip():
+            st.error("İsim boş olamaz")
+        else:
+            # 🔥 DUPLICATE KONTROL
+            existing = [
+                p for p in participants
+                if p["name"].strip().lower() == name.strip().lower()
+            ]
+
+            if existing:
+                st.warning("⚠️ Bu katılımcı zaten kayıtlı.")
+            else:
+                try:
+                    insert("participants", {
+                        "name": name.strip(),
+                        "type": ptype,
+                        "institution_name": institution_name.strip() if institution_name else None,
+                        "title": title.strip() if title else None,
+                        "notes": notes.strip() if notes else None
+                    })
+
+                    st.success("✅ Katılımcı eklendi")
+
+                except Exception as e:
+                    st.error("❌ Kayıt sırasında hata oluştu")
+                    st.code(str(e))
+
+# --- Liste gösterimi ---
+st.markdown("### Kayıtlı katılımcılar")
+
+if participants:
+    for p in participants:
+        st.write(f"- {p['name']} ({p['type']})")
+else:
+    st.info("Henüz katılımcı yok")
