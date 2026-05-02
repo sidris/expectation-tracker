@@ -78,3 +78,10 @@ Aynı kişi/kurum aynı hedef dönem ve gösterge için farklı tarihlerde tahmi
 - 2026-04-18: yıl sonu TÜFE 30
 
 `Revizyon Takibi` sayfası bunları çizgi grafik ve ısı haritası olarak gösterir.
+
+## v12 - Poll Edit
+
+- `pages/15_poll_edit.py`: Daha önce girilmiş anketleri düzenleme ekranı.
+- Yeni eklenen kurumları eski Reuters/Matriks/Bloomberg HT anketlerine sonradan dahil edebilirsin.
+- Mevcut kurum tahminlerini güncelleyebilir veya yanlış kayıtları silebilirsin.
+- `supabase/migration_v12.sql` veri silmez; sadece yardımcı kolon/index/view günceller.
