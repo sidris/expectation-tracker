@@ -2,13 +2,26 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from utils.db import fetch, upsert
-from utils.evds_sync import fetch_market_data_adapter, sync_actuals_from_market_data
+from utils.evds_sync import fetch_market_data_adapter, sync_actuals_from_market_data, auto_sync_actuals_once_per_day
+from utils.ui import inject_theme
 
+inject_theme()
 st.title("✅ Gerçekleşmeler")
+st.caption("Bu sayfa açıldığında EVDS/BIS gerçekleşmeleri günde en fazla bir kez otomatik senkronize edilir. Manuel buton sadece kontrol/önizleme için duruyor.")
 
-st.info("Manuel kayıt girebilir veya EVDS/BIS üzerinden aylık TÜFE, yıllık TÜFE ve politika faizi gerçekleşmelerini otomatik çekebilirsin.")
+# Geçmiş + içinde bulunduğumuz ay: gelecekte veri gelmez, ama sorgu aralığı geniş tutulabilir.
+auto_start = date(2024, 1, 1)
+auto_end = date.today()
+with st.spinner("EVDS/BIS gerçekleşmeleri kontrol ediliyor..."):
+    synced_count, auto_err = auto_sync_actuals_once_per_day(auto_start, auto_end)
+if auto_err:
+    st.warning(auto_err)
+else:
+    st.success(f"Otomatik kontrol tamamlandı. {synced_count} kayıt yazıldı/güncellendi.")
 
-tab_manual, tab_auto = st.tabs(["Manuel kayıt", "EVDS/BIS otomatik çek"])
+st.info("Gelecek aylar için gerçekleşme görünmemesi normaldir. 2026 tahminleri girilebilir; gerçekleşme sadece veri açıklandıktan sonra oluşur.")
+
+tab_manual, tab_auto = st.tabs(["Manuel kayıt", "EVDS/BIS kontrol ve yeniden sync"])
 
 with tab_manual:
     events = fetch("forecast_events", order="target_period")
@@ -42,18 +55,12 @@ with tab_auto:
     with c2:
         end_date = st.date_input("Bitiş", value=date.today(), key="evds_end")
 
-    if st.button("Veriyi çek ve önizle"):
-        df, err = fetch_market_data_adapter(start_date, end_date)
-        st.session_state["market_df"] = df
-        st.session_state["market_err"] = err
-
-    if "market_err" in st.session_state and st.session_state["market_err"]:
-        st.warning(st.session_state["market_err"])
-
-    df = st.session_state.get("market_df", pd.DataFrame())
-    if not df.empty:
+    df, err = fetch_market_data_adapter(start_date, end_date)
+    if err:
+        st.warning(err)
+    elif not df.empty:
         st.dataframe(df, use_container_width=True)
-        if st.button("Supabase actuals tablosuna yaz"):
+        if st.button("Bu aralığı yeniden Supabase actuals tablosuna yaz"):
             count = sync_actuals_from_market_data(df)
             st.success(f"{count} gerçekleşme kaydı Supabase'e yazıldı/güncellendi.")
 

@@ -8,7 +8,8 @@ import pandas as pd
 import requests
 import streamlit as st
 
-from utils.db import get_client, upsert
+from utils.db import upsert
+from utils.domain import ensure_event, log_activity
 
 
 def _secret(name: str, default=None):
@@ -51,7 +52,7 @@ def _evds_to_pct(evds_client, series_code: str, fetch_start: str, fetch_end: str
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=3600)
 def fetch_market_data_adapter(start_date: date | str, end_date: date | str) -> tuple[pd.DataFrame, Optional[str]]:
     """TÜFE'yi EVDS'ten, politika faizini BIS'ten çekerek aylık gerçekleşme datası döndürür."""
     empty_df = pd.DataFrame(columns=["Donem", "Aylık TÜFE", "Yıllık TÜFE", "PPK Faizi", "SortDate"])
@@ -86,7 +87,7 @@ def fetch_market_data_adapter(start_date: date | str, end_date: date | str) -> t
 
         df_inf["Aylık TÜFE"] = pd.to_numeric(df_inf["Aylık TÜFE"], errors="coerce").round(2)
         df_inf["Yıllık TÜFE"] = pd.to_numeric(df_inf["Yıllık TÜFE"], errors="coerce").round(2)
-        df_inf = df_inf.dropna(subset=["Aylık TÜFE", "Yıllık TÜFE"]).reset_index(drop=True)
+        df_inf = df_inf.dropna(subset=["Aylık TÜFE", "Yıllık TÜFE"], how="all").reset_index(drop=True)
     except Exception as exc:
         st.warning(f"EVDS bağlantısı kurulamadı: {exc}")
 
@@ -123,30 +124,9 @@ def fetch_market_data_adapter(start_date: date | str, end_date: date | str) -> t
     return master_df.sort_values("SortDate").reset_index(drop=True), None
 
 
-def ensure_event(target_period: str, target_type: str) -> str:
-    """forecast_events kaydını bulur veya oluşturur; event_id döndürür."""
-    client = get_client()
-    existing = (
-        client.table("forecast_events")
-        .select("id")
-        .eq("target_period", target_period)
-        .eq("target_type", target_type)
-        .limit(1)
-        .execute()
-        .data
-    )
-    if existing:
-        return existing[0]["id"]
-
-    inserted = client.table("forecast_events").insert(
-        {"target_period": target_period, "target_type": target_type}
-    ).execute().data
-    return inserted[0]["id"]
-
-
 def sync_actuals_from_market_data(df: pd.DataFrame) -> int:
     """Market datasını actuals tablosuna upsert eder. Her dönem için aylık/yıllık TÜFE ve PPK kaydı açar."""
-    inserted = 0
+    count = 0
     mapping = {
         "Aylık TÜFE": ("monthly_cpi", "EVDS", EVDS_TUFE_NEW or EVDS_TUFE_OLD),
         "Yıllık TÜFE": ("annual_cpi", "EVDS", EVDS_TUFE_NEW or EVDS_TUFE_OLD),
@@ -169,5 +149,18 @@ def sync_actuals_from_market_data(df: pd.DataFrame) -> int:
                 "notes": "Otomatik veri senkronizasyonu",
             }
             upsert("actuals", payload, on_conflict="event_id")
-            inserted += 1
-    return inserted
+            count += 1
+    if count:
+        log_activity("actuals_sync", "Gerçekleşmeler otomatik güncellendi", f"{count} kayıt yazıldı/güncellendi.")
+    return count
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def auto_sync_actuals_once_per_day(start_date: date | str, end_date: date | str) -> tuple[int, str | None]:
+    """Sayfa açıldığında günde en fazla bir kez otomatik sync yapar."""
+    df, err = fetch_market_data_adapter(start_date, end_date)
+    if err:
+        return 0, err
+    if df.empty:
+        return 0, "Veri bulunamadı."
+    return sync_actuals_from_market_data(df), None

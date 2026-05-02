@@ -64,6 +64,25 @@ if not actual.empty:
     fig.add_trace(go.Scatter(x=actual["target_period"], y=actual["actual_value"], mode="lines+markers", name="Gerçekleşme", line=dict(width=4, color="#111827", dash="dot", shape="spline"), marker=dict(size=8, color="#111827")))
 st.plotly_chart(fig, use_container_width=True)
 
+
+
+st.markdown("### 📦 Anket / kurum dağılımı")
+box_df = dff.dropna(subset=["forecast_value"]).copy()
+if not box_df.empty:
+    box_df["group_label"] = box_df["poll_name"].fillna(box_df["event_label"])
+    fig_box = px.box(
+        box_df,
+        x="group_label",
+        y="forecast_value",
+        points="all",
+        color="target_type_label" if "target_type_label" in box_df.columns else None,
+        hover_data=["participant_name", "forecast_date", "poll_name"],
+        title="Anket ve kurum cevapları dağılımı",
+    )
+    st.plotly_chart(plot_layout(fig_box, height=520), use_container_width=True)
+else:
+    st.info("Boxplot için tahmin verisi girin.")
+
 st.markdown("### Isı haritası: mutlak hata")
 heat = dff.dropna(subset=["abs_error"]).pivot_table(index="participant_name", columns="target_period", values="abs_error", aggfunc="mean")
 if not heat.empty:

@@ -7,14 +7,41 @@ from utils.ui import inject_theme, plot_layout
 
 inject_theme()
 st.title("🔁 Revizyon Takibi")
-st.caption("Aynı katılımcının aynı dönem/gösterge için zaman içindeki tahmin değişimlerini izleyin.")
+st.caption("Aynı katılımcının aynı hedef dönem/gösterge için zaman içindeki tahmin değişimlerini gösterir. Örn: 11.04.2026 → 28, 18.04.2026 → 30.")
 
 df = pd.DataFrame(fetch("v_revision_history"))
 if df.empty:
-    st.info("Revizyon göstermek için tahmin girin.")
+    st.info("Revizyon göstermek için en az bir tahmin girin.")
 else:
     dff = apply_common_filters(df, key_prefix="rev")
     excel_download_button(dff, "revizyon_takibi.xlsx", "Revizyonları Excel indir")
-    fig = px.line(dff.sort_values("forecast_date"), x="forecast_date", y="forecast_value", color="participant_name", markers=True, line_shape="spline", title="Tahmin revizyon çizgisi")
-    st.plotly_chart(plot_layout(fig, height=520), use_container_width=True)
-    st.dataframe(dff, use_container_width=True, hide_index=True)
+
+    if not dff.empty:
+        st.subheader("Revizyon çizgisi")
+        fig = px.line(
+            dff.sort_values("forecast_date"),
+            x="forecast_date",
+            y="forecast_value",
+            color="participant_name",
+            markers=True,
+            line_shape="spline",
+            hover_data=["event_label", "revision_no", "previous_value", "revision_delta", "poll_name"],
+            title="Tahmin revizyonları",
+        )
+        st.plotly_chart(plot_layout(fig, height=520), use_container_width=True)
+
+        st.subheader("Revizyon ısı haritası")
+        heat = dff.copy()
+        heat["forecast_date_str"] = pd.to_datetime(heat["forecast_date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        pivot = heat.pivot_table(index="participant_name", columns="forecast_date_str", values="forecast_value", aggfunc="last")
+        if not pivot.empty:
+            fig_h = px.imshow(
+                pivot,
+                aspect="auto",
+                labels=dict(x="Tahmin tarihi", y="Katılımcı", color="Tahmin"),
+                title="Tahmin revizyon ısı haritası",
+            )
+            st.plotly_chart(plot_layout(fig_h, height=520), use_container_width=True)
+
+        st.subheader("Revizyon tablosu")
+        st.dataframe(dff, use_container_width=True, hide_index=True)

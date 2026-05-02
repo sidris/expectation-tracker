@@ -1,0 +1,25 @@
+name: Sync actuals from EVDS and BIS
+
+on:
+  schedule:
+    - cron: "15 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync-actuals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Sync actuals
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          EVDS_API_KEY: ${{ secrets.EVDS_API_KEY }}
+          EVDS_TUFE_OLD: ${{ secrets.EVDS_TUFE_OLD }}
+          EVDS_TUFE_NEW: ${{ secrets.EVDS_TUFE_NEW }}
+        run: python scripts/sync_actuals.py

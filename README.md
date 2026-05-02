@@ -1,34 +1,80 @@
-# Beklenti Takip Sistemi v5
+# Expectation Tracker
 
-Streamlit + Supabase ile enflasyon ve TCMB PPK faiz beklentilerini toplama, filtreleme, Excel dışa aktarma, modern dashboard, revizyon takibi, konsensüs analizi, kaynak güven skoru, tahminci profili, ham metinden tahmin çıkarma ve Telegram bot başlangıcı.
+Streamlit + Supabase tabanlı enflasyon ve PPK beklenti takip sistemi.
+
+## Özellikler
+
+- Kişi, kurum ve medya/anket kaynağı takibi
+- Aylık TÜFE, yıllık TÜFE, yıl sonu TÜFE, PPK ve yıl sonu PPK tahminleri
+- Aynı katılımcının aynı hedef için birden fazla tahminini revizyon olarak saklama
+- Reuters/Matriks tarzı anket özeti + tek tek kurum cevaplarını aynı ekrandan girme
+- Dashboard, trend, hata ısı haritası, boxplot ve madalya kürsüsü
+- Veri havuzu ve Excel export
+- EVDS/BIS gerçekleşme senkronizasyonu
+- GitHub Actions ile günlük otomatik gerçekleşme sync seçeneği
+- Telegram bot başlangıç dosyası
 
 ## Kurulum
 
 ```bash
+python -m venv .venv
+.venv\Scripts\activate   # Windows
 pip install -r requirements.txt
-cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 streamlit run app.py
+```
+
+## Streamlit Secrets
+
+`.streamlit/secrets.toml` veya Streamlit Cloud Secrets:
+
+```toml
+SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
+SUPABASE_KEY="YOUR_SUPABASE_ANON_OR_PUBLISHABLE_KEY"
+
+EVDS_API_KEY="YOUR_EVDS_API_KEY"
+EVDS_TUFE_OLD="TP.FE.OKTG01"
+EVDS_TUFE_NEW="TP.FE.OKTG01"
 ```
 
 ## Supabase
 
-`supabase/schema.sql` dosyasını Supabase SQL Editor'da çalıştırın. Mevcut projede yeniden çalıştırılabilir şekilde `if not exists` ve `create or replace view` kullanılmıştır.
+Yeni kurulumda:
 
-## v5 ekleri
+1. `supabase/reset_dev.sql` çalıştır.
+2. `supabase/schema.sql` çalıştır.
 
-- Revizyon takibi: aynı kişi/kurumun aynı dönem için değişen tahminleri
-- Tahminci profili: toplam tahmin, skorlanan tahmin, ortalama hata, geçmiş grafik
-- Konsensüs sapması: ortalama/medyan beklentiden fark
-- Kaynak güven skoru: manuel kaynak değerlendirmesi + gerçekleşmeye göre hata
-- Metinden tahmin çıkarma: haber/TV notundan ön ayrıştırma
-- Aktivite akışı: son işlemler ve notlar
-- Telegram bot başlangıcı: `/expect 2026-03 monthly_cpi`, `/top`
+Mevcut v7/v8 projesinden geliyorsan veri silmeden:
 
-## Telegram bot
+1. `supabase/migration_v9.sql` çalıştır.
 
-```bash
-export SUPABASE_URL="..."
-export SUPABASE_KEY="..."
-export TELEGRAM_BOT_TOKEN="..."
-python telegram_bot/bot.py
-```
+## GitHub Actions ile otomatik EVDS/BIS sync
+
+Repo Settings → Secrets and variables → Actions içine şunları ekle:
+
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
+- `EVDS_API_KEY`
+- `EVDS_TUFE_OLD`
+- `EVDS_TUFE_NEW`
+
+Workflow: `.github/workflows/sync_actuals.yml`
+
+Her gün çalışır. İstersen GitHub Actions sekmesinden manuel de çalıştırabilirsin.
+
+## Reuters/Matriks tarzı anket girişi
+
+1. Katılımcılar sayfasında kurumları ekle: Albaraka, QNB, Deutsche Bank vb.
+2. Kaynaklar sayfasında Reuters, Bloomberg HT, Matriks vb. ekle.
+3. `Anket + Kurum Toplu Girişi` sayfasında:
+   - Anket özetini gir: min, max, medyan, ortalama
+   - Alt kırılımda kurum değerlerini gir
+4. Sistem hem `poll_summaries` hem de bağlı `forecasts` kayıtlarını oluşturur.
+
+## Revizyon mantığı
+
+Aynı kişi/kurum aynı hedef dönem ve gösterge için farklı tarihlerde tahmin verdiğinde ayrı kayıt tutulur:
+
+- 2026-04-11: yıl sonu TÜFE 28
+- 2026-04-18: yıl sonu TÜFE 30
+
+`Revizyon Takibi` sayfası bunları çizgi grafik ve ısı haritası olarak gösterir.
