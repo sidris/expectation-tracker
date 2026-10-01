@@ -45,7 +45,7 @@ def import_surveys(payload):
             if not math.isfinite(count) or not count.is_integer() or count < 0:
                 raise ValueError('Katılımcı sayısı negatif olmayan tam sayı olmalı.')
             values['participant_count'] = int(count)
-        import_notes = row.get('notes','')
+        import_notes = row.get('notes') or ''
         def differences(p):
             return {k: {'existing': p.get(k), 'pdf': v} for k,v in values.items()
                     if v is not None and (float(p[k]) if p.get(k) is not None else None) != v}
