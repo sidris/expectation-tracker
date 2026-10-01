@@ -15,6 +15,11 @@ st.set_page_config(
 )
 
 inject_theme()
+st.subheader('Anketten bilgi notuna')
+st.caption('Anketi girin veya PDF’den aktarın; dönemi seçerek grafiklerle birlikte bilgi notunu indirin.')
+a, b = st.columns(2)
+a.page_link('pages/16_survey_entry.py', label='Anket gir')
+b.page_link('pages/15_report.py', label='PDF bilgi notu oluştur')
 
 st.markdown(
     """
