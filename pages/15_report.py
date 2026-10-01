@@ -9,6 +9,10 @@ from utils.ui import inject_theme
 
 inject_theme()
 st.title('Rapor Üret')
+from utils.bulletin import render_bulletin
+render_bulletin()
+st.divider()
+st.subheader('Tahminci performansı ve veri dışa aktarımı')
 st.caption('Seçilen gösterge ve dönem için anket özetleri, kurum cevapları ve tahmin hataları.')
 polls = pd.DataFrame(fetch('v_poll_summaries'))
 forecasts = pd.DataFrame(fetch('v_forecasts'))
