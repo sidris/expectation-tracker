@@ -29,7 +29,7 @@ except Exception as error:
     st.error(str(error)); st.stop()
 for warning in payload['warnings']: st.warning(warning)
 st.info('Yayın/tahmin tarihleri rapordan alınmıştır; kurumların özgün açıklama tarihleriyle doğrulanmamıştır. Bilinen tarihleri düzeltin; rapor tarihi ayrıca korunur. PKA yayın tarihi bilinmiyor. HSBC Hldg → HSBC Portföy ve Rota Yatırım → Rota Portföy eşleşmeleri uygulanır. Kaynakta olası hatalar varsa özgün dosyayı koruyarak düzeltin.')
-include_pka = st.checkbox('PKA özetlerini de aktar (yayın tarihlerini doldurmanız gerekir)', value=False)
+include_pka = st.checkbox('PKA özetlerini de aktar (bilinmeyen yayın tarihleri boş kalır)', value=True)
 if not include_pka:
     payload['summaries'] = [r for r in payload['summaries'] if r['source_name'] != 'TCMB PKA']
 st.subheader('Anket özetleri')
@@ -47,8 +47,8 @@ checked = st.checkbox('Kurum eşleşmelerini, değerleri ve yayın tarihlerini k
 if st.button('Supabase’e aktar', type='primary', disabled=not checked):
     try:
         for row in edited['summaries'] + edited['forecasts']:
-            if not row.get('published_at'): raise ValueError('PKA dahil tüm yayın tarihlerini girin.')
-            pd.Timestamp(row['published_at'])
+            if not row.get('published_at') and row['source_name'] != 'TCMB PKA': raise ValueError('PKA dışındaki yayın tarihlerini girin.')
+            if row.get('published_at'): pd.Timestamp(row['published_at'])
             if row.get('forecast_value') is None and row in edited['forecasts']: raise ValueError('Tahmin değeri boş olamaz.')
         result = import_surveys(edited)
         invalidate_cache()
