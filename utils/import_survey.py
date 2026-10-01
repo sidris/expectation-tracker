@@ -40,6 +40,11 @@ def import_surveys(payload):
         key = dict(event_id=event, source_id=source, published_at=row['published_at'],
                    poll_name=f"{row['source_name']} beklenti anketi [PDF: {row['file']}]")
         values = {k: row.get(k) for k in ['median_value','mean_value','min_value','max_value','participant_count']}
+        if values['participant_count'] is not None:
+            count = float(values['participant_count'])
+            if not math.isfinite(count) or not count.is_integer() or count < 0:
+                raise ValueError('Katılımcı sayısı negatif olmayan tam sayı olmalı.')
+            values['participant_count'] = int(count)
         import_notes = row.get('notes','')
         def differences(p):
             return {k: {'existing': p.get(k), 'pdf': v} for k,v in values.items()
