@@ -11,3 +11,4 @@ evds>=0.3
 
 streamlit-aggrid>=1.0.0,<2.0.0
 pdfplumber>=0.11
+reportlab>=4.2
