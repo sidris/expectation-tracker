@@ -20,8 +20,8 @@ def import_surveys(payload):
         if row.get('min_value') is not None and row.get('max_value') is not None and row['min_value'] > row['max_value']:
             raise ValueError('En düşük değer en yüksek değeri aşamaz.')
     for row in payload['summaries']:
-        if not row.get('published_at'):
-            raise ValueError('Tüm özetlerin yayın tarihi girilmeli (PKA dahil).')
+        if not row.get('published_at') and row['source_name'] != 'TCMB PKA':
+            raise ValueError('PKA dışındaki özetlerin yayın tarihi girilmeli.')
     def resolve(table, name, existing, institution=False):
         matches = [r for r in existing if (not institution or r['type'] == 'institution') and
                    normalize(canonical_name(r['name']) if institution else r['name']) == normalize(name)]
@@ -50,7 +50,7 @@ def import_surveys(payload):
             return {k: {'existing': p.get(k), 'pdf': v} for k,v in values.items()
                     if v is not None and (float(p[k]) if p.get(k) is not None else None) != v}
         old = fetch('poll_summaries', filters=key)
-        if not old:
+        if not old and row.get('published_at'):
             candidates = fetch('poll_summaries', filters=dict(event_id=event, source_id=source))
             if row['target_type'] in ['year_end_cpi', 'year_end_policy_rate']:
                 candidates = [p for p in candidates if p.get('published_at') and
