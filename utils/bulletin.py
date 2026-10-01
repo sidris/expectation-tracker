@@ -22,7 +22,8 @@ def month_data(polls, forecasts, period):
         if r['target_type'] in ['monthly_cpi','annual_cpi'] and r['target_period'] == period:
             selected.append(r)
         elif r['target_type'] == 'year_end_cpi' and (r['target_period'][:4] == period[:4] or (r['source_name']=='TCMB PKA' and int(r['target_period'][:4])==int(period[:4])+1)):
-            if raw.get('file') in monthly_files or str(r.get('published_at') or '')[:7] == period[:7]:
+            same_survey = raw.get('file') in monthly_files if raw.get('file') else str(r.get('published_at') or '')[:7] == period[:7]
+            if same_survey:
                 selected.append(r)
     chosen = {}
     for r in sorted(selected, key=lambda r: (bool((r.get('raw_payload') or {}).get('file')), str(r.get('published_at') or ''), str(r.get('created_at') or ''))):
@@ -142,8 +143,13 @@ def render_bulletin():
         fig=go.Figure()
         for r in chartrows: fig.add_shape(type='line',x0=0,x1=r['forecast_value'],y0=r['participant_name'],y1=r['participant_name'],line=dict(color='#225c90',width=2))
         fig.add_trace(go.Scatter(x=[r['forecast_value'] for r in chartrows],y=[r['participant_name'] for r in chartrows],mode='markers+text',text=[number(r['forecast_value']) for r in chartrows],textposition='middle right',marker=dict(size=9,color='#225c90'),cliponaxis=False))
+        chartpoll=next((r for r in selected if r['id']==chartrows[0]['poll_id']),{})
+        if chartpoll.get('median_value') is not None: fig.add_vline(x=chartpoll['median_value'],line_dash='dash',line_color='#225c90')
+        actuals={float(r['actual_value']) for r in chartrows if r.get('actual_value') is not None and not pd.isna(r['actual_value'])}
+        if len(actuals)==1: fig.add_vline(x=next(iter(actuals)),line_dash='dash',line_color='#aa4b24')
         fig.update_layout(height=max(350,len(chartrows)*25),xaxis_title='Aylık TÜFE beklentisi (%)',yaxis=dict(autorange='reversed'),showlegend=False,margin=dict(l=10,r=55,t=20,b=40),paper_bgcolor='white',plot_bgcolor='white')
         st.plotly_chart(fig,use_container_width=True)
+        st.caption('Mavi kesikli çizgi: medyan. Turuncu kesikli çizgi: kayıtlı gerçekleşme (varsa).')
     pdf=build_pdf(selected,answers,period,report_date)
     st.download_button('Bilgi notunu PDF indir',pdf,f'tufe-beklenti-{period[:7]}.pdf','application/pdf',type='primary')
     st.caption('Yayın tarihleri ve gerçekleşmeler mevcut kayıtlardan alınır; rapor tarihi ayrı tutulur.')
